@@ -43,8 +43,18 @@ test-testautomatico-jenkins/
 ```
 
 ---
+## 馃З Configuraci贸n
 
-## 🚀 Comandos clave en `package.json`
+### `karma.conf.js`
+
+Agrega este archivo en la raíz del proyecto Angular:
+
+📁Ubicación: `./karma.conf.js`
+
+Contiene configuración para correr los tests con `ChromeHeadless` sin instalar Puppeteer ni Chrome manualmente.
+
+
+### 🚀 Comandos clave en `package.json`
 
 ```json
 "scripts": {
@@ -84,7 +94,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 Este pipeline:
 
-1. Usa un contenedor temporal con Node.js (`node:18-alpine`) como agente
+1. Usa un contenedor temporal con Node.js y Chrome (`image 'cypress/browsers:node18.12.0-chrome107'`) como agente, ya que se requiere puppeteer-ready para el test
 2. Se configura la rama activa (`GIT_BRANCH`)
 3. Ejecuta pruebas antes de construir o desplegar la app Angular
 
@@ -92,7 +102,7 @@ Este pipeline:
 pipeline {
     agent {
         docker {
-            image 'node:18-alpine'
+            image 'cypress/browsers:node18.12.0-chrome107'
         }
     }
 
