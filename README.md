@@ -65,29 +65,31 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ## 🧩 Jenkinsfile
 
-El pipeline en Jenkins realiza:
+Este pipeline:
 
-1. Clonación del código
-2. Instalación de dependencias
-3. Ejecución de tests
-4. Build de imagen Docker
-5. Despliegue en contenedor si todo es exitoso
+1. Usa un contenedor temporal con Node.js (`node:18-alpine`) como agente
+2. Detecta automáticamente la rama activa (`env.BRANCH_NAME`)
+3. Ejecuta pruebas antes de construir o desplegar la app Angular
 
 ```groovy
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:18-alpine'
+        }
+    }
 
     environment {
         IMAGE_NAME = "angular-app-test"
         CONTAINER_NAME = "angular-app-test-container"
         GIT_REPO = "https://github.com/franklincappa/test-testautomatico-jenkins.git"
-        GIT_BRANCH = "main"
     }
 
     stages {
         stage('Clonar Código') {
             steps {
-                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
+                echo "Rama activa: ${env.BRANCH_NAME}"
+                git branch: "${env.BRANCH_NAME}", url: "${GIT_REPO}"
             }
         }
 
@@ -131,6 +133,24 @@ pipeline {
 
 ---
 
+## ⚙️ Agente Docker
+
+Este pipeline usa un contenedor Docker temporal con Node.js (`node:18-alpine`) como entorno de ejecución, lo que permite correr `npm install`, `npm test`, y otros comandos sin necesidad de instalar Node.js en el host Jenkins.
+
+---
+
+## 🌿 Detección automática de la rama (`env.BRANCH_NAME`)
+
+Para que el pipeline funcione correctamente con cualquier rama activa, se utiliza la variable interna de Jenkins:
+
+```groovy
+git branch: "${env.BRANCH_NAME}", url: "${GIT_REPO}"
+```
+
+Esto evita tener que modificar manualmente la rama en cada ejecución.
+
+---
+
 ## 🌐 Acceso a la App
 
 Una vez desplegada, accede vía:
@@ -144,4 +164,4 @@ http://localhost:5005
 ## 👨‍💻 Autor
 
 Franklin Cappa Ticona  
-DevOps Engineer - DBCODE Consulting
+DevOps Engineer · DBCODE Consulting
