@@ -12,7 +12,9 @@ Este repositorio demuestra cómo integrar una aplicación Angular en Jenkins par
 
 ---
 
-## 🔌 Plugins requeridos en Jenkins
+## ✅ Requisitos
+
+### 🔌 Plugins requeridos en Jenkins
 
 Para que este pipeline funcione correctamente, asegúrate de tener instalados los siguientes plugins en Jenkins:
 
@@ -23,10 +25,16 @@ Para que este pipeline funcione correctamente, asegúrate de tener instalados lo
 | **Git plugin**        | Clonación y operaciones Git                      |
 | **Pipeline: GitHub**  | Soporte para repositorios GitHub (opcional)      |
 | **Email Extension**   | (opcional) Envío de notificaciones por correo    |
+| **Blue Ocean**        | (opcional) para vista moderna                    |
 
 Puedes instalarlos desde **Manage Jenkins > Manage Plugins > Available**.
 
 Si `Docker Pipeline` no aparece, ve a la pestaña **Advanced** y haz clic en **Check Now** para refrescar el catálogo.
+
+### ⚙️ Requisitos del entorno:
+- Jenkins ejecutándose con Docker y acceso al socket `/var/run/docker.sock`
+- Acceso a Internet para clonar el repositorio
+- Node.js y Chrome embebidos en la imagen usada para ejecutar los tests
 
 ---
 
@@ -37,6 +45,7 @@ test-testautomatico-jenkins/
 │
 ├── src/                      # Código fuente Angular
 ├── package.json              # Scripts de build y test
+├── karma.conf.js
 ├── Dockerfile                # Construcción de imagen Angular + nginx
 ├── Jenkinsfile               # Pipeline de Jenkins con etapa de tests
 └── README.md                 # Este archivo
@@ -74,13 +83,13 @@ module.exports = function (config) {
     colors: true,
     logLevel: config.LOG_INFO,
     autoWatch: false,
-    browsers: ['ChromeHeadlessNoSandbox'],
     customLaunchers: {
       ChromeHeadlessNoSandbox: {
         base: 'ChromeHeadless',
         flags: ['--no-sandbox']
       }
     },
+    browsers: ['ChromeHeadlessNoSandbox'],
     singleRun: true,
     restartOnFileChange: false
   });
@@ -100,7 +109,7 @@ Contiene configuración para correr los tests con `ChromeHeadless` sin instalar 
 "scripts": {
   "start": "ng serve",
   "build": "ng build",
-  "test": "ng test --watch=false --browsers=ChromeHeadless"
+  "test": "ng test --watch=false --browsers=ChromeHeadlessNoSandbox"
 }
 ```
 
@@ -132,71 +141,84 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ## 🧩 Jenkinsfile
 
-Este pipeline:
+El pipeline define las siguientes etapas:
 
-1. Usa un contenedor temporal con Node.js y Chrome (`image 'cypress/browsers:node18.12.0-chrome107'`) como agente, ya que se requiere puppeteer-ready para el test
-2. Se configura la rama activa (`GIT_BRANCH`)
-3. Ejecuta pruebas antes de construir o desplegar la app Angular
+- `Clonar Código`: desde rama `master`
+- `Instalar dependencias`: con imagen `cypress/browsers:node18.12.0-chrome107`
+- `Ejecutar Tests`: ejecuta `npm test` con Chrome Headless No Sandbox
+- `Construir Imagen`: ejecuta `docker build`
+- `Desplegar`: detiene y recrea el contenedor, exponiendo en el puerto `5005` del host
 
 ```groovy
+
 pipeline {
-    agent {
+  agent any
+
+  environment {
+    BRANCH_NAME = 'master'
+    IMAGE_NAME = 'angular-app-test'
+    CONTAINER_NAME = 'angular-app-test-container'
+    HOST_PORT = '5005'
+    CONTAINER_PORT = '80'
+  }
+
+  stages {
+    stage('Clonar Código') {
+      steps {
+        echo "Rama activa definida manualmente: ${env.BRANCH_NAME}"
+        git branch: "${env.BRANCH_NAME}", url: 'https://github.com/franklincappa/test-testautomatico-jenkins.git'
+      }
+    }
+
+    stage('Instalar dependencias') {
+      agent {
         docker {
-            image 'cypress/browsers:node18.12.0-chrome107'
+          image 'cypress/browsers:node18.12.0-chrome107'
         }
+      }
+      steps {
+        sh 'npm install'
+      }
     }
 
-    environment {
-        IMAGE_NAME = "angular-app-test"
-        CONTAINER_NAME = "angular-app-test-container"
-        GIT_REPO = "https://github.com/franklincappa/test-testautomatico-jenkins.git"
-        GIT_BRANCH = "master"
+    stage('Ejecutar Tests') {
+      agent {
+        docker {
+          image 'cypress/browsers:node18.12.0-chrome107'
+        }
+      }
+      steps {
+        sh 'npm test'
+      }
     }
 
-    stages {
-        stage('Clonar Código') {
-            steps {
-                echo "Rama activa definida: ${GIT_BRANCH}"
-                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
-            }
-        }
-
-        stage('Instalar dependencias') {
-            steps {
-                sh 'npm install'
-            }
-        }
-
-        stage('Ejecutar Tests') {
-            steps {
-                sh 'npm test'
-            }
-        }
-
-        stage('Construir Imagen') {
-            steps {
-                sh "docker build -t ${IMAGE_NAME} ."
-            }
-        }
-
-        stage('Desplegar') {
-            steps {
-                sh "docker stop ${CONTAINER_NAME} || true"
-                sh "docker rm ${CONTAINER_NAME} || true"
-                sh "docker run -d --name ${CONTAINER_NAME} -p 5005:80 ${IMAGE_NAME}"
-            }
-        }
+    stage('Construir Imagen') {
+      steps {
+        sh "docker build -t ${IMAGE_NAME} ."
+      }
     }
 
-    post {
-        success {
-            echo "✅ Pipeline finalizado correctamente"
+    stage('Desplegar') {
+      steps {
+        script {
+          sh "docker stop ${CONTAINER_NAME} || true"
+          sh "docker rm ${CONTAINER_NAME} || true"
+          sh "docker run -d --name ${CONTAINER_NAME} -p ${HOST_PORT}:${CONTAINER_PORT} ${IMAGE_NAME}"
         }
-        failure {
-            echo "❌ Error en los tests o etapas previas, pipeline cancelado"
-        }
+      }
     }
+  }
+
+  post {
+    failure {
+      echo "❌ Error en los tests o etapas previas, pipeline cancelado"
+    }
+    success {
+      echo "✅ Despliegue completado con éxito: http://localhost:${HOST_PORT}"
+    }
+  }
 }
+
 ```
 
 ---
@@ -226,6 +248,25 @@ Una vez desplegada, accede vía:
 ```
 http://localhost:5005
 ```
+
+---
+
+## 📝 Comando para forzar fallo en tests
+
+Modifica temporalmente un test en `*.spec.ts` para que falle:
+
+```ts
+expect(true).toBe(false);
+```
+
+Esto demostrará que el pipeline se detiene correctamente antes del `build` si hay errores en los tests.
+
+---
+
+## 🧪 Resultado esperado
+
+- Si los tests **pasan** → la app se construye y despliega correctamente.
+- Si los tests **fallan** → se cancela el proceso y no se genera ni despliega la imagen Docker.
 
 ---
 
