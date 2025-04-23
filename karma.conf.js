@@ -1,4 +1,3 @@
-
 process.env.CHROME_BIN = require('puppeteer').executablePath();
 
 module.exports = function (config) {
@@ -10,17 +9,19 @@ module.exports = function (config) {
       require('karma-chrome-launcher'),
       require('karma-jasmine-html-reporter'),
       require('karma-coverage'),
+      require('karma-webpack'),
+      require('karma-spec-reporter'),
       require('@angular-devkit/build-angular/plugins/karma')
     ],
     client: {
       clearContext: false
     },
     coverageReporter: {
-      dir: require('path').join(__dirname, './coverage'),
+      dir: require('path').join(__dirname, './coverage/angular-test'),
       subdir: '.',
       reporters: [{ type: 'html' }, { type: 'text-summary' }]
     },
-    reporters: ['progress', 'kjhtml'],
+    reporters: ['progress'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
@@ -29,7 +30,7 @@ module.exports = function (config) {
     customLaunchers: {
       ChromeHeadlessNoSandbox: {
         base: 'ChromeHeadless',
-        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+        flags: ['--no-sandbox', '--disable-setuid-sandbox']
       }
     },
     singleRun: true,
