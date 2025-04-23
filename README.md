@@ -1,5 +1,5 @@
 
-# 🧪 Escenario 4: Tests Automáticos Antes del Build con Jenkins + Angular
+# 🧪 Escenario: Tests Automáticos Antes del Build con Jenkins + Angular
 
 Este repositorio demuestra cómo integrar una aplicación Angular en Jenkins para ejecutar **tests automáticos antes del build**, como parte de una práctica DevOps moderna.
 

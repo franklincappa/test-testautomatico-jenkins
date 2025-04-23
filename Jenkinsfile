@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "angular-app-test"
         CONTAINER_NAME = "angular-app-test-container"
         GIT_REPO = "https://github.com/franklincappa/test-testautomatico-jenkins.git"
-        GIT_BRANCH = "main"
+        GIT_BRANCH = "master"
     }
 
     stages {
