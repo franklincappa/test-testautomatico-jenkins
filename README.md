@@ -1,5 +1,4 @@
-
-# 🧪 Escenario: Tests Automáticos Antes del Build con Jenkins + Angular
+# 🧪 Escenario 4: Tests Automáticos Antes del Build con Jenkins + Angular
 
 Este repositorio demuestra cómo integrar una aplicación Angular en Jenkins para ejecutar **tests automáticos antes del build**, como parte de una práctica DevOps moderna.
 
@@ -10,6 +9,24 @@ Este repositorio demuestra cómo integrar una aplicación Angular en Jenkins par
 - Validar que los tests (`npm test`) se ejecutan exitosamente antes de compilar o desplegar
 - Cancelar el pipeline automáticamente si los tests fallan
 - Desplegar la aplicación Angular en un contenedor Docker solo si las pruebas pasan
+
+---
+
+## 🔌 Plugins requeridos en Jenkins
+
+Para que este pipeline funcione correctamente, asegúrate de tener instalados los siguientes plugins en Jenkins:
+
+| Plugin                | Descripción                                       |
+|-----------------------|---------------------------------------------------|
+| **Docker Pipeline**   | Permite usar `agent docker` en Jenkinsfiles      |
+| **Pipeline**          | Soporte general para `Declarative Pipelines`     |
+| **Git plugin**        | Clonación y operaciones Git                      |
+| **Pipeline: GitHub**  | Soporte para repositorios GitHub (opcional)      |
+| **Email Extension**   | (opcional) Envío de notificaciones por correo    |
+
+Puedes instalarlos desde **Manage Jenkins > Manage Plugins > Available**.
+
+Si `Docker Pipeline` no aparece, ve a la pestaña **Advanced** y haz clic en **Check Now** para refrescar el catálogo.
 
 ---
 
@@ -68,7 +85,7 @@ CMD ["nginx", "-g", "daemon off;"]
 Este pipeline:
 
 1. Usa un contenedor temporal con Node.js (`node:18-alpine`) como agente
-2. Detecta automáticamente la rama activa (`env.BRANCH_NAME`)
+2. Se configura la rama activa (`GIT_BRANCH`)
 3. Ejecuta pruebas antes de construir o desplegar la app Angular
 
 ```groovy
@@ -83,13 +100,14 @@ pipeline {
         IMAGE_NAME = "angular-app-test"
         CONTAINER_NAME = "angular-app-test-container"
         GIT_REPO = "https://github.com/franklincappa/test-testautomatico-jenkins.git"
+        GIT_BRANCH = "master"
     }
 
     stages {
         stage('Clonar Código') {
             steps {
-                echo "Rama activa: ${env.BRANCH_NAME}"
-                git branch: "${env.BRANCH_NAME}", url: "${GIT_REPO}"
+                echo "Rama activa definida: ${GIT_BRANCH}"
+                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
             }
         }
 
