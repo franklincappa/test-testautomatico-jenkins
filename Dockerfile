@@ -12,7 +12,7 @@ RUN npm run build --configuration=production
 # Etapa de producción con nginx
 FROM nginx:alpine
 
-COPY --from=builder /app/dist/ /usr/share/nginx/html
+COPY --from=builder /app/dist/angular-test /usr/share/nginx/html
 
 # Copiar configuración de nginx opcionalmente si existe
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
